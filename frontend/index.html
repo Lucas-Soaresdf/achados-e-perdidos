@@ -1,14 +1,56 @@
 <!DOCTYPE html>
 <html lang="pt-br">
+
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title> achados e perdidos </title>
+    <title>Mural de Achados e Perdidos</title>
 </head>
-<body>
-    
-   <div id="mural"></div>
 
-   <script src="js/app.js"></script>
+<body>
+    <h1>Mural de Achados e Perdidos</h1>
+
+    <form id="form-item">
+
+        <input type="text" name="titulo" placeholder="Título" required>
+
+        <textarea name="descricao" placeholder="Descrição"> </textarea>
+
+        <input type="text" name="local" placeholder="Local" required>
+
+        <select name="tipo" required>
+
+            <option value="achado">Achado</option>
+            <option value="perdido">Perdido</option>
+
+        </select>
+
+        <select name="categoria">
+
+            <option value="documento">Documento</option>
+
+            <option value="chaves">Chaves</option>
+
+            <option value="celular">Celular</option>
+
+            <option value="carteira">Carteira</option>
+
+            <option value="pet">Pet</option>
+
+            <option value="outros">Outros</option>
+
+        </select>
+
+        <input type="text" name="contato" placeholder="WhatsApp" required>
+
+        <input type="date" name="data_perdido_achado">
+
+        <button type="submit">Cadastrar</button>
+
+    </form>
+
+    <div id="mural"> </div>
+
+    <script src="js/app.js"></script>
 </body>
+
 </html>
