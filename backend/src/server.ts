@@ -4,9 +4,23 @@ import cors from "cors";
 
 import { pool } from "./database/db.js";
 
+import multer from "multer";
+
+import path from "node:path";
+
+const storage = multer.diskStorage({
+  destination: "uploads/",
+  filename: (req, file, cb) => {
+    const nomeUnico = Date.now() + path.extname(file.originalname);
+    cb(null, nomeUnico)
+  },
+});
+
+const upload = multer({ storage });
 
 const app = express();
 
+app.use("/uploads", express.static("uploads"));
 app.use(express.json());
 app.use(cors());
 
@@ -21,31 +35,33 @@ app.get('/api/itens', async (req, res) => {
   }
 });
 
-app.post('/api/itens', async (req, res) => {
-  const { titulo, descricao, foto, local, tipo, categoria, contato, data_perdido_achado } = req.body;
+app.post("/api/itens", upload.single("foto"), async (req, res) => {
+  const { titulo, descricao, local, tipo, categoria, contato, data_perdido_achado } = req.body;
+  const foto = req.file?.filename ?? null;
 
-  if (!titulo || !local || !tipo || !contato) return res.status(400).json({ erro: 'Preencha os campos corretamente.' });
+  if (!titulo || !local || !tipo || !contato) {
+    return res.status(400).json({ erro: "Preencha os campos corretamente." });
+  }
 
   try {
-     await pool.query(
-      "INSERT INTO mural (titulo, descricao, foto, local, tipo, categoria, contato, data_perdido_achado) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", 
+    await pool.query(
+      "INSERT INTO mural (titulo, descricao, foto, local, tipo, categoria, contato, data_perdido_achado) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
       [
-        titulo, 
-        descricao ?? null, 
-        foto ?? null, 
-        local, 
-        tipo, 
-        categoria ?? "outros", 
-        contato, 
+        titulo,
+        descricao || null,
+        foto,
+        local,
+        tipo,
+        categoria || "outros",
+        contato,
         data_perdido_achado || null,
       ]
     );
 
     res.status(201).json({ mensagem: "Item cadastrado com sucesso!" });
-
   } catch (erro) {
-    console.log(erro);
-    res.status(500).json({ erro: 'Erro ao cadastrar itens os itens.' });
+    console.error(erro);
+    res.status(500).json({ erro: "Erro ao cadastrar o item." });
   }
 });
 

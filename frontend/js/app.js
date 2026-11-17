@@ -12,15 +12,51 @@ async function carregarItens() {
         mural.textContent = "";
 
         itens.forEach((item) => {
-            const mostraItens = document.createElement('div');
 
-            mostraItens.textContent = `Título da postagem: ${item.titulo} - Tipo do item achado ${item.tipo}`;
+            const card = document.createElement("div");
+            card.classList.add("card");
 
-            mural.appendChild(mostraItens);
+            const titulo = document.createElement("h3");
+            titulo.textContent = item.titulo;
+
+            const tipo = document.createElement("span");
+            tipo.textContent = item.tipo;
+
+            const descricao = document.createElement("p");
+            descricao.textContent = item.descricao || "Sem descrição";
+
+            const local = document.createElement("p");
+            local.textContent = `Local: ${item.local}`;
+
+            const contato = document.createElement("p");
+            contato.textContent = `Entre em contato: ${item.contato}`;
+
+            const categoria = document.createElement("span");
+            categoria.textContent = `Categoria do item: ${item.categoria}`;
+
+            const resolvido = document.createElement("span");
+            resolvido.textContent = item.resolvido === "sim" ? "Resolvido ✅" : " Em aberto";
+
+            const dataEl = document.createElement("p");
+            const dataFormatada = item.data_perdido_achado
+                ? new Date(item.data_perdido_achado).toLocaleDateString("pt-BR")
+                : "Data não informada";
+            dataEl.textContent = `Data: ${dataFormatada}`;
+
+            card.append(titulo, tipo, descricao, local, contato, categoria, resolvido, dataEl);
+
+            if (item.foto) {
+                const imagem = document.createElement("img");
+                imagem.src = `http://localhost:3000/uploads/${item.foto}`;
+                imagem.alt = item.titulo;
+                card.prepend(imagem);
+            }
+
+            mural.appendChild(card);
         });
 
     } catch (error) {
-        console.log('Error ao carregar: ', error);
+        console.error('Erro ao carregar:', error);
     }
 }
 
@@ -29,13 +65,12 @@ carregarItens();
 form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    const dados = Object.fromEntries(new FormData(form));
+    const dados = new FormData(form);
 
     try {
         const resposta = await fetch("http://localhost:3000/api/itens", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(dados)
+            body: dados,
         });
 
         if (!resposta.ok) throw new Error("Erro ao cadastrar");
