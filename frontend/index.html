@@ -12,10 +12,13 @@
 
     <form id="form-item">
 
+        <label for="data">Título da postagem</label>
         <input type="text" name="titulo" placeholder="Título" required>
 
+        <label for="data">Descrição do item achado</label> 
         <textarea name="descricao" placeholder="Descrição"> </textarea>
 
+        <label for="data">Local em que o item foi achado</label>
         <input type="text" name="local" placeholder="Local" required>
 
         <select name="tipo" required>
@@ -26,30 +29,26 @@
         </select>
 
         <select name="categoria">
-
             <option value="documento">Documento</option>
-
             <option value="chaves">Chaves</option>
-
             <option value="celular">Celular</option>
-
             <option value="carteira">Carteira</option>
-
             <option value="pet">Pet</option>
-
             <option value="outros">Outros</option>
-
         </select>
 
         <input type="file" name="foto" accept="image/*">
 
         <input type="text" name="contato" placeholder="WhatsApp" required>
 
+        <label for="data">Data em que foi achado ou perdido</label>  
         <input type="date" name="data_perdido_achado">
 
         <button type="submit">Cadastrar</button>
 
     </form>
+
+    <p id="mensagem"></p>
 
     <div id="mural"> </div>
 

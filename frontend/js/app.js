@@ -1,5 +1,6 @@
 const mural = document.getElementById('mural');
 const form = document.getElementById('form-item');
+const mensagem = document.getElementById('mensagem');
 
 async function carregarItens() {
     try {
@@ -73,7 +74,12 @@ form.addEventListener('submit', async (e) => {
             body: dados,
         });
 
-        if (!resposta.ok) throw new Error("Erro ao cadastrar");
+        if (!resposta.ok) {
+            const erro = await resposta.json();
+            mensagem.textContent = erro.erro;
+            return;
+        }
+        mensagem.textContent = "";
 
         form.reset();
 
@@ -83,3 +89,5 @@ form.addEventListener('submit', async (e) => {
         console.error("Erro ao cadastrar:", error);
     }
 });
+
+tipo.classList.add("tipo", item.tipo);
