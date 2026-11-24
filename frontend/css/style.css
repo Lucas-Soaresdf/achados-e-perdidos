@@ -1,72 +1,337 @@
-body {
-  font-family: Arial, sans-serif;
-  background: #f4f4f4;
-  margin: 0;
-  padding: 20px;
+:root {
+  --fundo: #fafafa;
+  --cartao: #ffffff;
+  --borda: #dbdbdb;
+  --texto: #262626;
+  --texto-suave: #777777;
+  --campo-borda: #cccccc;
+  --botao-sec: #efefef;
+  --botao-sec-hover: #dbdbdb;
+  --sem-foto: #efefef;
+  --erro: #d93025;
+  color-scheme: light;
 }
 
-h1 {
+:root[data-theme="dark"] {
+  --fundo: #121212;
+  --cartao: #1e1e1e;
+  --borda: #333333;
+  --texto: #f2f2f2;
+  --texto-suave: #a3a3a3;
+  --campo-borda: #4a4a4a;
+  --botao-sec: #2c2c2c;
+  --botao-sec-hover: #3a3a3a;
+  --sem-foto: #2a2a2a;
+  --erro: #ff6b5e;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: Arial, sans-serif;
+  background: var(--fundo);
+  color: var(--texto);
+  margin: 0;
+  padding: 0 20px 20px;
+}
+
+/* ---------- Topo ---------- */
+
+.topo {
+  position: relative;
+  max-width: 470px;
+  margin: 0 auto;
+  padding: 16px 0;
   text-align: center;
 }
 
-#mural {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 16px;
+.topo h1 {
+  margin: 0;
+  padding: 0 48px;
+  font-size: 1.3rem;
 }
 
-.card {
-  background: white;
-  border-radius: 8px;
+#btn-tema {
+  position: absolute;
+  top: 12px;
+  right: 0;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 50%;
+  background: var(--botao-sec);
+  color: var(--texto);
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+#btn-tema:hover {
+  background: var(--botao-sec-hover);
+}
+
+.nova-publicacao {
+  max-width: 470px;
+  margin: 0 auto 20px;
   padding: 16px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  background: var(--cartao);
+  border: 1px solid var(--borda);
+  border-radius: 8px;
+  text-align: center;
 }
 
-.card img {
-  width: 100%;
-  height: 200px;
-  object-fit: cover;
-  border-radius: 6px;
-}
-
-.card span {
-  display: flex;
-  margin-bottom: 4px;
-}
-
-.tipo {
-  color: white;
-  padding: 2px 8px;
-  border-radius: 4px;
+.nova-publicacao p {
+  margin: 0 0 12px;
   font-weight: bold;
-  width: fit-content;
 }
 
-.tipo.achado { background: greenyellow; }
-.tipo.perdido { background: rgb(139, 37, 37); }
+#btn-nova {
+  padding: 10px 24px;
+  font-size: 1rem;
+}
+
+#aviso {
+  max-width: 470px;
+  margin: 0 auto 16px;
+  text-align: center;
+  min-height: 1.2em;
+}
+
+/* ---------- Botões ---------- */
+
+button {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 6px;
+  background: #0095f6;
+  color: white;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #1877f2;
+}
+
+#btn-cancelar,
+.acoes button {
+  background: var(--botao-sec);
+  color: var(--texto);
+}
+
+#btn-cancelar:hover,
+.acoes button:hover {
+  background: var(--botao-sec-hover);
+}
+
+/* ---------- Modal ---------- */
+
+dialog {
+  border: none;
+  border-radius: 12px;
+  padding: 0;
+  width: min(470px, 92vw);
+  max-height: 90vh;
+  background: var(--cartao);
+  color: var(--texto);
+}
+
+dialog::backdrop {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.modal-conteudo {
+  padding: 16px;
+}
+
+.modal-conteudo h2 {
+  margin: 0 0 12px;
+  font-size: 1.1rem;
+}
 
 #form-item {
   display: flex;
-  flex-direction:column;
+  flex-direction: column;
   gap: 10px;
-  max-width: 500px;
-  margin: 0 auto 30px;
+}
+
+#form-item label {
+  font-size: 0.85rem;
+  color: var(--texto-suave);
 }
 
 #form-item input,
 #form-item textarea,
 #form-item select {
+  width: 100%;
   padding: 10px;
-  border: 1px solid #ccc;
+  border: 1px solid var(--campo-borda);
   border-radius: 6px;
+  background: var(--cartao);
+  color: var(--texto);
+  font-size: 1rem;
+  font-family: inherit;
+}
+
+#form-item textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+#form-item small {
+  color: var(--texto-suave);
+}
+
+.modal-botoes {
+  display: flex;
+  gap: 8px;
+}
+
+.modal-botoes button {
+  flex: 1;
+  padding: 12px;
+}
+
+#erro-form {
+  color: var(--erro);
+  min-height: 1.2em;
+  margin: 10px 0 0;
+}
+
+/* ---------- Filtros ---------- */
+
+#filtros {
+  display: flex;
+  gap: 10px;
+  max-width: 470px;
+  margin: 0 auto 20px;
+}
+
+#filtros select {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid var(--campo-borda);
+  border-radius: 6px;
+  background: var(--cartao);
+  color: var(--texto);
   font-size: 1rem;
 }
 
-#form-item button {
+/* ---------- Feed ---------- */
+
+#mural {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  max-width: 470px;
+  margin: 0 auto;
+}
+
+.vazio {
+  text-align: center;
+  color: var(--texto-suave);
+}
+
+.post {
+  background: var(--cartao);
+  border: 1px solid var(--borda);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.post-cabecalho {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   padding: 12px;
-  background: grey;
+}
+
+.post-foto,
+.post-sem-foto {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+}
+
+.post-foto {
+  display: block;
+  object-fit: cover;
+}
+
+.post-sem-foto {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 4rem;
+  background: var(--sem-foto);
+}
+
+.post-corpo {
+  padding: 12px;
+}
+
+.post-corpo h3 {
+  margin: 0 0 8px;
+}
+
+.post-corpo p {
+  margin: 6px 0;
+}
+
+.post.resolvido {
+  opacity: 0.6;
+}
+
+.acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+/* ---------- Etiqueta achado/perdido ---------- */
+
+.tipo {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
   color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.tipo.achado {
+  background: #2e9e5b;
+}
+
+.tipo.perdido {
+  background: #d93025;
+}
+
+/* botao para voltar ao topo */
+
+#btn-topo {
+  position: fixed;
+  right: 16px;
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  z-index: 20;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 1.3rem;
+  line-height: 1;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.rodape {
+  text-align: center;
+  margin-top: 30px;
+}
+
+.span-link {
+  text-decoration: none;
+  color: #0095f6;
 }

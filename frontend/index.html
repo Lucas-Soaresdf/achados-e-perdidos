@@ -3,77 +3,91 @@
 
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mural de Achados e Perdidos</title>
+
+    <script>
+        (function () {
+            var tema = null;
+            try { tema = localStorage.getItem("tema"); } catch (e) { }
+            if (tema !== "dark" && tema !== "light") {
+                tema = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+            }
+            document.documentElement.setAttribute("data-theme", tema);
+        })();
+    </script>
+
     <link rel="stylesheet" href="css/style.css">
+
 </head>
 
 <body>
-    <h1>Mural de Achados e Perdidos</h1>
 
-    <form id="form-item">
+    <header class="topo">
+        <h1>Mural de Achados e Perdidos</h1>
+        <button type="button" id="btn-tema" aria-label="Ativar modo escuro">🌙</button>
+    </header>
 
-        <label for="titulo">Título da postagem</label>
-        <input type="text" name="titulo" placeholder="Título" required>
+    <section class="nova-publicacao">
+        <p>Adicionar nova publicação</p>
+        <button type="button" id="btn-nova">+ Publicar</button>
+    </section>
 
-        <label for="descricao">Descrição do item achado</label>
-        <textarea name="descricao" placeholder="Descrição"> </textarea>
+    <p id="aviso"></p>
 
-        <label for="local">Local em que o item foi achado</label>
-        <input type="text" name="local" placeholder="Local" required>
+    <dialog id="modal">
+        <div class="modal-conteudo">
+            <h2 id="modal-titulo">Nova postagem</h2>
 
-        <label for="tipo">Informe se o objeto foi achado ou perdido</label>
+            <form id="form-item">
+                <input type="text" name="titulo" placeholder="Título" maxlength="50" required>
+                <textarea name="descricao" placeholder="Descrição"></textarea>
+                <input type="text" name="local" placeholder="Local" maxlength="50" required>
 
-        <select name="tipo" required>
+                <select name="tipo" required>
+                    <option value="achado">Achado</option>
+                    <option value="perdido">Perdido</option>
+                </select>
 
-            <option value="achado">Achado</option>
-            <option value="perdido">Perdido</option>
+                <select name="categoria">
+                    <option value="documento">Documento</option>
+                    <option value="chaves">Chaves</option>
+                    <option value="celular">Celular</option>
+                    <option value="carteira">Carteira</option>
+                    <option value="pet">Pet</option>
+                    <option value="outros">Outros</option>
+                </select>
 
-        </select>
+                <input type="text" name="contato" placeholder="WhatsApp" maxlength="20" required>
 
-        <label for="categoria">Informe o tipo do objeto</label>
+                <label for="data">Data em que foi achado ou perdido</label>
+                <input type="date" id="data" name="data_perdido_achado">
 
-        <select name="categoria">
+                <label for="foto">Foto (opcional)</label>
+                <input type="file" id="foto" name="foto" accept="image/jpeg,image/png,image/webp">
 
-            <option value="documento">Documento</option>
-            <option value="chaves">Chaves</option>
-            <option value="celular">Celular</option>
-            <option value="carteira">Carteira</option>
-            <option value="pet">Pet</option>
-            <option value="outros">Outros</option>
+                <input type="password" name="senha" placeholder="Senha para editar/apagar depois" minlength="4"
+                    required>
+                <small>Guarde essa senha: ela é a única forma de editar ou apagar sua postagem.</small>
 
-        </select>
+                <div class="modal-botoes">
+                    <button type="submit" id="btn-enviar">Cadastrar</button>
+                    <button type="button" id="btn-cancelar">Cancelar</button>
+                </div>
+            </form>
 
-        <label for="foto">Adicione uma imagem do objeto</label>
-        <input type="file" name="foto" accept="image/*">
-
-        <label for="contato">Adicionar contato</label>
-        <input type="text" name="contato" placeholder="WhatsApp" required>
-
-        <label for="data_perdido_achado">Data em que foi achado ou perdido</label>
-        <input type="date" name="data_perdido_achado">
-
-        <small>Guarde essa senha: ela é a única forma de editar ou apagar sua postagem.</small>
-        <input type="password" name="senha" placeholder="Senha para editar/apagar depois" required minlength="4">
-
-        <button type="submit" id="btn-enviar">Cadastrar</button>
-        <button type="button" id="btn-cancelar" hidden>Cancelar</button>
-
-    </form>
-
-    <p id="mensagem"></p>
+            <p id="erro-form"></p>
+        </div>
+    </dialog>
 
     <div id="filtros">
-
         <select id="filtro-tipo">
-
             <option value="">Todos os tipos</option>
             <option value="achado">Achados</option>
             <option value="perdido">Perdidos</option>
-
         </select>
 
         <select id="filtro-categoria">
-
             <option value="">Todas as categorias</option>
             <option value="documento">Documento</option>
             <option value="chaves">Chaves</option>
@@ -81,12 +95,16 @@
             <option value="carteira">Carteira</option>
             <option value="pet">Pet</option>
             <option value="outros">Outros</option>
-
         </select>
-
     </div>
 
     <div id="mural"></div>
+
+    <button type="button" id="btn-topo" aria-label="Voltar ao topo" hidden>↑</button>
+
+    <footer class="rodape">
+        <span>Site criado por <a class="span-link" href="https://www.instagram.com/lucas_soaresdf/">LS.dev</a></span>
+    </footer>
 
     <script src="js/app.js"></script>
 </body>

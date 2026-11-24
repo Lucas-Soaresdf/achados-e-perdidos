@@ -1,15 +1,65 @@
 const API = "http://localhost:3000";
 
+const EMOJIS = {
+    documento: "📄",
+    chaves: "🔑",
+    celular: "📱",
+    carteira: "👛",
+    pet: "🐶",
+    outros: "📦",
+};
+
 const mural = document.getElementById("mural");
 const form = document.getElementById("form-item");
-const mensagem = document.getElementById("mensagem");
+const modal = document.getElementById("modal");
+const modalTitulo = document.getElementById("modal-titulo");
+const btnNova = document.getElementById("btn-nova");
+const aviso = document.getElementById("aviso");
+const erroForm = document.getElementById("erro-form");
 const filtroTipo = document.getElementById("filtro-tipo");
 const filtroCategoria = document.getElementById("filtro-categoria");
 const btnEnviar = document.getElementById("btn-enviar");
 const btnCancelar = document.getElementById("btn-cancelar");
+const btnTema = document.getElementById("btn-tema");
+const btnTopo = document.getElementById("btn-topo");
 
 let editandoId = null;
 let senhaEdicao = null;
+
+/* ---------- Modal ---------- */
+
+function abrirModal(titulo) {
+    modalTitulo.textContent = titulo;
+    erroForm.textContent = "";
+    modal.showModal();
+}
+
+function mostrarAviso(texto) {
+    aviso.textContent = texto;
+    setTimeout(() => {
+        aviso.textContent = "";
+    }, 4000);
+}
+
+btnNova.addEventListener("click", () => abrirModal("Nova postagem"));
+btnCancelar.addEventListener("click", () => modal.close());
+
+// Fecha ao clicar no fundo escuro (só se o clique começou e terminou nele,
+// para não fechar quando a pessoa seleciona texto e solta o mouse fora)
+let cliqueComecouNoFundo = false;
+
+modal.addEventListener("mousedown", (e) => {
+    cliqueComecouNoFundo = e.target === modal;
+});
+
+modal.addEventListener("click", (e) => {
+    if (e.target === modal && cliqueComecouNoFundo) modal.close();
+});
+
+// Roda quando o modal fecha, por qualquer caminho (Cancelar, Esc, fundo ou sucesso)
+modal.addEventListener("close", sairModoEdicao);
+
+/* ---------- Edição ---------- */
 
 async function iniciarEdicao(item) {
     const senha = prompt("Digite a senha da postagem para editar:");
@@ -53,10 +103,7 @@ function entrarModoEdicao(item, senha) {
     form.elements.foto.disabled = true;
 
     btnEnviar.textContent = "Salvar alterações";
-    btnCancelar.hidden = false;
-    mensagem.textContent = "Editando a postagem.";
-
-    form.scrollIntoView({ behavior: "smooth" });
+    abrirModal("Editar postagem");
 }
 
 function sairModoEdicao() {
@@ -66,7 +113,7 @@ function sairModoEdicao() {
     form.elements.senha.disabled = false;
     form.elements.foto.disabled = false;
     btnEnviar.textContent = "Cadastrar";
-    btnCancelar.hidden = true;
+    erroForm.textContent = "";
 }
 
 async function salvarEdicao() {
@@ -83,18 +130,20 @@ async function salvarEdicao() {
         const resultado = await resposta.json();
 
         if (!resposta.ok) {
-            mensagem.textContent = resultado.erro;
+            erroForm.textContent = resultado.erro;
             return;
         }
 
-        sairModoEdicao();
-        mensagem.textContent = resultado.mensagem;
+        modal.close();
+        mostrarAviso(resultado.mensagem);
         await carregarItens();
     } catch (error) {
         console.error("Erro ao editar:", error);
-        mensagem.textContent = "Não foi possível salvar. Tente novamente.";
+        erroForm.textContent = "Não foi possível salvar. Tente novamente.";
     }
 }
+
+/* ---------- Cadastro, resolver e apagar ---------- */
 
 async function criarItem() {
     const dados = new FormData(form);
@@ -107,16 +156,16 @@ async function criarItem() {
 
         if (!resposta.ok) {
             const erro = await resposta.json();
-            mensagem.textContent = erro.erro;
+            erroForm.textContent = erro.erro;
             return;
         }
 
-        mensagem.textContent = "Item cadastrado com sucesso!";
-        form.reset();
+        modal.close();
+        mostrarAviso("Item cadastrado com sucesso!");
         await carregarItens();
     } catch (error) {
         console.error("Erro ao cadastrar:", error);
-        mensagem.textContent = "Não foi possível cadastrar. Tente novamente.";
+        erroForm.textContent = "Não foi possível cadastrar. Tente novamente.";
     }
 }
 
@@ -134,10 +183,7 @@ async function apagarItem(id) {
         const resultado = await resposta.json();
         alert(resultado.mensagem || resultado.erro);
 
-        if (resposta.ok) {
-            if (editandoId === id) sairModoEdicao();
-            carregarItens();
-        }
+        if (resposta.ok) carregarItens();
     } catch (error) {
         console.error("Erro ao apagar:", error);
     }
@@ -163,6 +209,91 @@ async function marcarResolvido(id) {
     }
 }
 
+/* ---------- Feed ---------- */
+
+function criarPost(item) {
+    const emoji = EMOJIS[item.categoria] ?? "📦";
+
+    const post = document.createElement("article");
+    post.classList.add("post");
+    if (item.resolvido === "sim") post.classList.add("resolvido");
+
+    // Cabeçalho: tipo (achado/perdido) e categoria
+    const cabecalho = document.createElement("div");
+    cabecalho.classList.add("post-cabecalho");
+
+    const tipo = document.createElement("span");
+    tipo.classList.add("tipo", item.tipo);
+    tipo.textContent = item.tipo;
+
+    const categoria = document.createElement("span");
+    categoria.textContent = `${emoji} ${item.categoria}`;
+
+    cabecalho.append(tipo, categoria);
+
+    // Mídia: foto ou bloco com o emoji da categoria
+    let midia;
+    if (item.foto) {
+        midia = document.createElement("img");
+        midia.classList.add("post-foto");
+        midia.src = item.foto;
+        midia.alt = item.titulo;
+    } else {
+        midia = document.createElement("div");
+        midia.classList.add("post-sem-foto");
+        midia.textContent = emoji;
+    }
+
+    // Corpo
+    const corpo = document.createElement("div");
+    corpo.classList.add("post-corpo");
+
+    const titulo = document.createElement("h3");
+    titulo.textContent = item.titulo;
+
+    const descricao = document.createElement("p");
+    descricao.textContent = item.descricao || "Sem descrição";
+
+    const local = document.createElement("p");
+    local.textContent = `📍 ${item.local}`;
+
+    const dataEl = document.createElement("p");
+    dataEl.textContent = item.data_perdido_achado
+        ? `📅 ${new Date(item.data_perdido_achado).toLocaleDateString("pt-BR")}`
+        : "📅 Data não informada";
+
+    const contato = document.createElement("p");
+    contato.textContent = `📞 ${item.contato}`;
+
+    const status = document.createElement("p");
+    status.textContent = item.resolvido === "sim" ? "Resolvido ✅" : "Em aberto";
+
+    const acoes = document.createElement("div");
+    acoes.classList.add("acoes");
+
+    if (item.resolvido !== "sim") {
+        const btnResolvido = document.createElement("button");
+        btnResolvido.textContent = "Marcar como resolvido";
+        btnResolvido.addEventListener("click", () => marcarResolvido(item.id_mural));
+        acoes.appendChild(btnResolvido);
+    }
+
+    const btnEditar = document.createElement("button");
+    btnEditar.textContent = "Editar";
+    btnEditar.addEventListener("click", () => iniciarEdicao(item));
+    acoes.appendChild(btnEditar);
+
+    const btnApagar = document.createElement("button");
+    btnApagar.textContent = "Apagar";
+    btnApagar.addEventListener("click", () => apagarItem(item.id_mural));
+    acoes.appendChild(btnApagar);
+
+    corpo.append(titulo, descricao, local, dataEl, contato, status, acoes);
+
+    post.append(cabecalho, midia, corpo);
+    return post;
+}
+
 async function carregarItens() {
     try {
         const params = new URLSearchParams();
@@ -186,73 +317,14 @@ async function carregarItens() {
         }
 
         itens.forEach((item) => {
-            const card = document.createElement("div");
-            card.classList.add("card");
-            if (item.resolvido === "sim") card.classList.add("resolvido");
-
-            const titulo = document.createElement("h3");
-            titulo.textContent = item.titulo;
-
-            const tipo = document.createElement("span");
-            tipo.classList.add("tipo", item.tipo);
-            tipo.textContent = item.tipo;
-
-            const descricao = document.createElement("p");
-            descricao.textContent = item.descricao || "Sem descrição";
-
-            const local = document.createElement("p");
-            local.textContent = `Local: ${item.local}`;
-
-            const contato = document.createElement("p");
-            contato.textContent = `Entre em contato: ${item.contato}`;
-
-            const categoria = document.createElement("span");
-            categoria.textContent = `Categoria: ${item.categoria}`;
-
-            const resolvido = document.createElement("span");
-            resolvido.textContent = item.resolvido === "sim" ? "Resolvido ✅" : "Em aberto";
-
-            const dataEl = document.createElement("p");
-            const dataFormatada = item.data_perdido_achado
-                ? new Date(item.data_perdido_achado).toLocaleDateString("pt-BR")
-                : "Data não informada";
-            dataEl.textContent = `Data: ${dataFormatada}`;
-
-            const acoes = document.createElement("div");
-            acoes.classList.add("acoes");
-
-            if (item.resolvido !== "sim") {
-                const btnResolvido = document.createElement("button");
-                btnResolvido.textContent = "Marcar como resolvido";
-                btnResolvido.addEventListener("click", () => marcarResolvido(item.id_mural));
-                acoes.appendChild(btnResolvido);
-            }
-
-            const btnEditar = document.createElement("button");
-            btnEditar.textContent = "Editar";
-            btnEditar.addEventListener("click", () => iniciarEdicao(item));
-            acoes.appendChild(btnEditar);
-
-            const btnApagar = document.createElement("button");
-            btnApagar.textContent = "Apagar";
-            btnApagar.addEventListener("click", () => apagarItem(item.id_mural));
-            acoes.appendChild(btnApagar);
-
-            card.append(titulo, tipo, descricao, local, contato, categoria, resolvido, dataEl, acoes);
-
-            if (item.foto) {
-                const imagem = document.createElement("img");
-                imagem.src = `${API}/uploads/${item.foto}`;
-                imagem.alt = item.titulo;
-                card.prepend(imagem);
-            }
-
-            mural.appendChild(card);
+            mural.appendChild(criarPost(item));
         });
     } catch (error) {
         console.error("Erro ao carregar:", error);
     }
 }
+
+/* ---------- Eventos ---------- */
 
 form.addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -264,10 +336,43 @@ form.addEventListener("submit", async (e) => {
     }
 });
 
-btnCancelar.addEventListener("click", () => {
-    sairModoEdicao();
-    mensagem.textContent = "";
+// tema para claro e escuro
+
+function aplicarTema(tema) {
+    document.documentElement.dataset.theme = tema;
+    btnTema.textContent = tema === "dark" ? "☀️" : "🌙";
+    btnTema.setAttribute(
+        "aria-label",
+        tema === "dark" ? "Ativar modo claro" : "Ativar modo escuro"
+    );
+}
+
+btnTema.addEventListener("click", () => {
+    const novoTema = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+    aplicarTema(novoTema);
+    try {
+        localStorage.setItem("tema", novoTema);
+    } catch (error) {
+        console.error("Não foi possível salvar o tema:", error);
+    }
 });
+
+aplicarTema(document.documentElement.dataset.theme ?? "light");
+
+/* botao para voltar ao topo */
+
+function atualizarBotaoTopo() {
+    btnTopo.hidden = window.scrollY < 400;
+}
+
+window.addEventListener("scroll", atualizarBotaoTopo, { passive: true });
+
+btnTopo.addEventListener("click", () => {
+    const reduzirMovimento = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    window.scrollTo({ top: 0, behavior: reduzirMovimento ? "auto" : "smooth" });
+});
+
+atualizarBotaoTopo();
 
 filtroTipo.addEventListener("change", carregarItens);
 filtroCategoria.addEventListener("change", carregarItens);
