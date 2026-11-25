@@ -1,112 +1,108 @@
 <!DOCTYPE html>
 <html lang="pt-br">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mural de Achados e Perdidos</title>
-
-    <script>
-        (function () {
-            var tema = null;
-            try { tema = localStorage.getItem("tema"); } catch (e) { }
-            if (tema !== "dark" && tema !== "light") {
-                tema = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-            }
-            document.documentElement.setAttribute("data-theme", tema);
-        })();
-    </script>
-
-    <link rel="stylesheet" href="css/style.css">
-
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="shortcut icon" href="img/icons8-achados-e-perdidos-16.png" type="image/x-icon">
+  <title>Mural de Achados e Perdidos</title>
+  <script>
+    (function () {
+      var tema = null;
+      try { tema = localStorage.getItem("tema"); } catch (e) {}
+      if (tema !== "dark" && tema !== "light") {
+        tema = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      }
+      document.documentElement.setAttribute("data-theme", tema);
+    })();
+  </script>
+  <link rel="stylesheet" href="css/style.css">
 </head>
-
 <body>
+  <header class="topo">
+    <h1>Mural de Achados e Perdidos</h1>
+    <button type="button" id="btn-tema" aria-label="Ativar modo escuro">🌙</button>
+  </header>
 
-    <header class="topo">
-        <h1>Mural de Achados e Perdidos</h1>
-        <button type="button" id="btn-tema" aria-label="Ativar modo escuro">🌙</button>
-    </header>
+  <section class="nova-publicacao">
+    <p>Adicionar nova publicação</p>
+    <button type="button" id="btn-nova">+ Publicar</button>
+  </section>
 
-    <section class="nova-publicacao">
-        <p>Adicionar nova publicação</p>
-        <button type="button" id="btn-nova">+ Publicar</button>
-    </section>
+  <p id="aviso"></p>
 
-    <p id="aviso"></p>
+  <dialog id="modal">
+    <div class="modal-conteudo">
+      <h2 id="modal-titulo">Nova postagem</h2>
 
-    <dialog id="modal">
-        <div class="modal-conteudo">
-            <h2 id="modal-titulo">Nova postagem</h2>
+      <form id="form-item">
+        <input type="text" name="titulo" placeholder="Título" maxlength="50" required>
+        <textarea name="descricao" placeholder="Descrição" maxlength="1000"></textarea>
+        <input type="text" name="local" placeholder="Local" maxlength="50" required>
 
-            <form id="form-item">
-                <input type="text" name="titulo" placeholder="Título" maxlength="50" required>
-                <textarea name="descricao" placeholder="Descrição"></textarea>
-                <input type="text" name="local" placeholder="Local" maxlength="50" required>
+        <select name="tipo" required>
+          <option value="achado">Achado</option>
+          <option value="perdido">Perdido</option>
+        </select>
 
-                <select name="tipo" required>
-                    <option value="achado">Achado</option>
-                    <option value="perdido">Perdido</option>
-                </select>
+        <select name="categoria">
+          <option value="documento">Documento</option>
+          <option value="chaves">Chaves</option>
+          <option value="celular">Celular</option>
+          <option value="carteira">Carteira</option>
+          <option value="pet">Pet</option>
+          <option value="outros">Outros</option>
+        </select>
 
-                <select name="categoria">
-                    <option value="documento">Documento</option>
-                    <option value="chaves">Chaves</option>
-                    <option value="celular">Celular</option>
-                    <option value="carteira">Carteira</option>
-                    <option value="pet">Pet</option>
-                    <option value="outros">Outros</option>
-                </select>
+        <small id="aviso-documento" hidden>
+          Documentos: não mostre número, CPF nem foto legível. Descreva só o tipo
+          e, se quiser, o nome impresso.
+        </small>
 
-                <input type="text" name="contato" placeholder="WhatsApp" maxlength="20" required>
+        <input type="text" name="contato" placeholder="WhatsApp" maxlength="20" required>
+        <small>O contato fica visível para todas as pessoas que abrirem o mural.</small>
 
-                <label for="data">Data em que foi achado ou perdido</label>
-                <input type="date" id="data" name="data_perdido_achado">
+        <label for="data">Data em que foi achado ou perdido</label>
+        <input type="date" id="data" name="data_perdido_achado">
 
-                <label for="foto">Foto (opcional)</label>
-                <input type="file" id="foto" name="foto" accept="image/jpeg,image/png,image/webp">
+        <label for="foto">Foto (opcional)</label>
+        <input type="file" id="foto" name="foto" accept="image/jpeg,image/png,image/webp">
 
-                <input type="password" name="senha" placeholder="Senha para editar/apagar depois" minlength="4"
-                    required>
-                <small>Guarde essa senha: ela é a única forma de editar ou apagar sua postagem.</small>
+        <input type="password" name="senha" placeholder="Senha para editar/apagar depois" minlength="6" maxlength="72" required>
+        <small>Mínimo de 6 caracteres. Guarde essa senha: ela é a única forma de editar ou apagar sua postagem.</small>
 
-                <div class="modal-botoes">
-                    <button type="submit" id="btn-enviar">Cadastrar</button>
-                    <button type="button" id="btn-cancelar">Cancelar</button>
-                </div>
-            </form>
-
-            <p id="erro-form"></p>
+        <div class="modal-botoes">
+          <button type="submit" id="btn-enviar">Cadastrar</button>
+          <button type="button" id="btn-cancelar">Cancelar</button>
         </div>
-    </dialog>
+      </form>
 
-    <div id="filtros">
-        <select id="filtro-tipo">
-            <option value="">Todos os tipos</option>
-            <option value="achado">Achados</option>
-            <option value="perdido">Perdidos</option>
-        </select>
-
-        <select id="filtro-categoria">
-            <option value="">Todas as categorias</option>
-            <option value="documento">Documento</option>
-            <option value="chaves">Chaves</option>
-            <option value="celular">Celular</option>
-            <option value="carteira">Carteira</option>
-            <option value="pet">Pet</option>
-            <option value="outros">Outros</option>
-        </select>
+      <p id="erro-form"></p>
     </div>
+  </dialog>
 
-    <div id="mural"></div>
+  <div id="filtros">
+    <select id="filtro-tipo">
+      <option value="">Todos os tipos</option>
+      <option value="achado">Achados</option>
+      <option value="perdido">Perdidos</option>
+    </select>
 
-    <button type="button" id="btn-topo" aria-label="Voltar ao topo" hidden>↑</button>
+    <select id="filtro-categoria">
+      <option value="">Todas as categorias</option>
+      <option value="documento">Documento</option>
+      <option value="chaves">Chaves</option>
+      <option value="celular">Celular</option>
+      <option value="carteira">Carteira</option>
+      <option value="pet">Pet</option>
+      <option value="outros">Outros</option>
+    </select>
+  </div>
 
-    <footer class="rodape">
-        <span>Site criado por <a class="span-link" href="https://www.instagram.com/lucas_soaresdf/">LS.dev</a></span>
-    </footer>
+  <div id="mural"></div>
 
-    <script src="js/app.js"></script>
+  <button type="button" id="btn-topo" aria-label="Voltar ao topo" hidden>↑</button>
+
+  <script src="js/config.js"></script>
+  <script src="js/app.js"></script>
 </body>
-
 </html>

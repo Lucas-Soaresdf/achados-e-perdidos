@@ -2,6 +2,7 @@ import "dotenv/config";
 import express from "express";
 import type { Request, Response, NextFunction } from "express";
 import cors from "cors";
+import helmet from "helmet";
 import multer from "multer";
 import bcrypt from "bcryptjs";
 import rateLimit from "express-rate-limit";
@@ -9,39 +10,104 @@ import { v2 as cloudinary } from "cloudinary";
 import type { RowDataPacket } from "mysql2";
 import { pool } from "./database/db.js";
 
+/* ---------- Constantes ---------- */
+
 const TIPOS = ["achado", "perdido"];
 const CATEGORIAS = ["documento", "chaves", "celular", "carteira", "pet", "outros"];
+const TIPOS_IMAGEM = ["image/jpeg", "image/png", "image/webp"];
 
-const tiposPermitidos = ["image/jpeg", "image/png", "image/webp"];
+const SENHA_MINIMA = 6;
+const SENHA_MAXIMA_BYTES = 72; // limite do bcrypt
+
+// Erro com mensagem segura para mostrar à pessoa
+class ErroUsuario extends Error {}
+
+/* ---------- Validação ---------- */
+
+function texto(valor: unknown): string {
+  return typeof valor === "string" ? valor.trim() : "";
+}
+
+function senhaValida(senha: unknown): senha is string {
+  return (
+    typeof senha === "string" &&
+    senha.length >= SENHA_MINIMA &&
+    Buffer.byteLength(senha, "utf8") <= SENHA_MAXIMA_BYTES
+  );
+}
+
+type Dados = {
+  titulo: string;
+  descricao: string | null;
+  local: string;
+  tipo: string;
+  categoria: string;
+  contato: string;
+  dataPerdidoAchado: string | null;
+};
+
+type Leitura = { ok: true; dados: Dados } | { ok: false; erro: string };
+
+function lerDados(corpo: unknown): Leitura {
+  const c = (typeof corpo === "object" && corpo !== null ? corpo : {}) as Record<string, unknown>;
+
+  const titulo = texto(c.titulo);
+  const descricao = texto(c.descricao);
+  const local = texto(c.local);
+  const tipo = texto(c.tipo);
+  const categoria = texto(c.categoria) || "outros";
+  const contato = texto(c.contato);
+  const data = texto(c.data_perdido_achado);
+
+  if (!titulo || !local || !contato) {
+    return { ok: false, erro: "Preencha título, local e contato." };
+  }
+  if (titulo.length > 50 || local.length > 50) {
+    return { ok: false, erro: "Título e local podem ter no máximo 50 caracteres." };
+  }
+  if (contato.length > 20) {
+    return { ok: false, erro: "O contato pode ter no máximo 20 caracteres." };
+  }
+  if (descricao.length > 1000) {
+    return { ok: false, erro: "A descrição pode ter no máximo 1000 caracteres." };
+  }
+  if (!TIPOS.includes(tipo)) {
+    return { ok: false, erro: "Tipo inválido." };
+  }
+  if (!CATEGORIAS.includes(categoria)) {
+    return { ok: false, erro: "Categoria inválida." };
+  }
+  if (data && (!/^\d{4}-\d{2}-\d{2}$/.test(data) || Number.isNaN(Date.parse(data)))) {
+    return { ok: false, erro: "Data inválida." };
+  }
+
+  return {
+    ok: true,
+    dados: {
+      titulo,
+      descricao: descricao || null,
+      local,
+      tipo,
+      categoria,
+      contato,
+      dataPerdidoAchado: data || null,
+    },
+  };
+}
+
+/* ---------- Upload e Cloudinary ---------- */
 
 // A imagem fica só na memória até ser enviada ao Cloudinary
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024 },
+  limits: { fileSize: 5 * 1024 * 1024, files: 1 },
   fileFilter: (req, file, cb) => {
-    if (tiposPermitidos.includes(file.mimetype)) {
+    if (TIPOS_IMAGEM.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error("Apenas imagens JPG, PNG ou WEBP são permitidas."));
+      cb(new ErroUsuario("Apenas imagens JPG, PNG ou WEBP são permitidas."));
     }
   },
-});
-
-const limiteSenha = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 10,
-  skipSuccessfulRequests: true,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { erro: "Muitas tentativas. Tente novamente em alguns minutos." },
-});
-
-const limiteCadastro = rateLimit({
-  windowMs: 60 * 60 * 1000,
-  limit: 10,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { erro: "Muitos cadastros em pouco tempo. Tente novamente mais tarde." },
 });
 
 type FotoNuvem = { url: string; publicId: string };
@@ -50,7 +116,7 @@ function enviarParaCloudinary(arquivo: Express.Multer.File): Promise<FotoNuvem> 
   return new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
       {
-        folder: "achados-perdidos",
+        asset_folder: "achados-perdidos",
         resource_type: "image",
         transformation: [{ width: 1200, crop: "limit" }],
       },
@@ -72,6 +138,29 @@ async function apagarDaNuvem(publicId?: string | null) {
     .destroy(publicId)
     .catch((erro) => console.error("Falha ao apagar imagem da nuvem:", erro));
 }
+
+/* ---------- Limites de uso ---------- */
+
+// Limita tentativas de senha: só conta as que falharam
+const limiteSenha = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  skipSuccessfulRequests: true,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { erro: "Muitas tentativas. Tente novamente em alguns minutos." },
+});
+
+// Limita cadastros por pessoa para conter spam
+const limiteCadastro = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { erro: "Muitos cadastros em pouco tempo. Tente novamente mais tarde." },
+});
+
+/* ---------- Senha da postagem ---------- */
 
 type Verificacao =
   | { ok: true; item: RowDataPacket }
@@ -99,14 +188,30 @@ async function verificarSenha(id: number, senha: string): Promise<Verificacao> {
   return { ok: true, item };
 }
 
+/* ---------- App ---------- */
+
 const app = express();
 
-// Na hora de publicar (Render, etc.), descomente a linha abaixo para o
-// limite de tentativas enxergar o IP real de cada pessoa:
-// app.set("trust proxy", 1);
+// Em produção o servidor fica atrás de um proxy (Render, etc.):
+// sem isso, o limite de tentativas veria o mesmo IP para todo mundo
+if (process.env.NODE_ENV === "production") {
+  app.set("trust proxy", 1);
+}
 
-app.use(express.json());
-app.use(cors());
+// FRONTEND_URL: endereço(s) do site, separados por vírgula, sem "/" no final.
+// Se não estiver definida (no seu computador), qualquer origem é aceita.
+const origensPermitidas = (process.env.FRONTEND_URL ?? "")
+  .split(",")
+  .map((origem) => origem.trim().replace(/\/$/, ""))
+  .filter(Boolean);
+
+app.use(helmet());
+app.use(cors({ origin: origensPermitidas.length > 0 ? origensPermitidas : true }));
+app.use(express.json({ limit: "10kb" }));
+
+app.get("/api/saude", (req, res) => {
+  res.json({ ok: true });
+});
 
 app.get("/api/itens", async (req, res) => {
   const { tipo, categoria } = req.query;
@@ -126,7 +231,8 @@ app.get("/api/itens", async (req, res) => {
     valores.push(categoria);
   }
 
-  sql += " ORDER BY data_poste DESC";
+  // Limite temporário até a paginação ficar pronta
+  sql += " ORDER BY data_poste DESC, id_mural DESC LIMIT 100";
 
   try {
     const [linhas] = await pool.query(sql, valores);
@@ -138,18 +244,22 @@ app.get("/api/itens", async (req, res) => {
 });
 
 app.post("/api/itens", limiteCadastro, upload.single("foto"), async (req, res) => {
-  const { titulo, descricao, local, tipo, categoria, contato, data_perdido_achado, senha } = req.body;
-  const categoriaFinal = categoria || "outros";
+  const leitura = lerDados(req.body);
+  const senha: unknown = req.body?.senha;
 
-  if (
-    !titulo || !local || !contato ||
-    typeof senha !== "string" || senha.length < 4 ||
-    !TIPOS.includes(tipo) || !CATEGORIAS.includes(categoriaFinal)
-  ) {
-    res.status(400).json({ erro: "Preencha os campos e crie uma senha de pelo menos 4 caracteres." });
+  if (!leitura.ok) {
+    res.status(400).json({ erro: leitura.erro });
     return;
   }
 
+  if (!senhaValida(senha)) {
+    res.status(400).json({
+      erro: `A senha deve ter entre ${SENHA_MINIMA} e ${SENHA_MAXIMA_BYTES} caracteres.`,
+    });
+    return;
+  }
+
+  const { dados } = leitura;
   let foto: FotoNuvem | null = null;
 
   try {
@@ -158,7 +268,9 @@ app.post("/api/itens", limiteCadastro, upload.single("foto"), async (req, res) =
         foto = await enviarParaCloudinary(req.file);
       } catch (erro) {
         console.error(erro);
-        res.status(400).json({ erro: "Não foi possível processar a imagem. Envie um arquivo JPG, PNG ou WEBP válido." });
+        res.status(400).json({
+          erro: "Não foi possível processar a imagem. Envie um arquivo JPG, PNG ou WEBP válido.",
+        });
         return;
       }
     }
@@ -168,15 +280,15 @@ app.post("/api/itens", limiteCadastro, upload.single("foto"), async (req, res) =
     await pool.query(
       "INSERT INTO mural (titulo, descricao, foto, foto_public_id, local, tipo, categoria, contato, data_perdido_achado, senha_hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
       [
-        titulo,
-        descricao || null,
+        dados.titulo,
+        dados.descricao,
         foto?.url ?? null,
         foto?.publicId ?? null,
-        local,
-        tipo,
-        categoriaFinal,
-        contato,
-        data_perdido_achado || null,
+        dados.local,
+        dados.tipo,
+        dados.categoria,
+        dados.contato,
+        dados.dataPerdidoAchado,
         senhaHash,
       ]
     );
@@ -191,7 +303,7 @@ app.post("/api/itens", limiteCadastro, upload.single("foto"), async (req, res) =
 
 app.post("/api/itens/:id/verificar", limiteSenha, async (req, res) => {
   const id = Number(req.params.id);
-  const senha = req.body?.senha;
+  const senha: unknown = req.body?.senha;
 
   if (!Number.isInteger(id) || typeof senha !== "string" || !senha) {
     res.status(400).json({ erro: "Informe a senha da postagem." });
@@ -215,21 +327,21 @@ app.post("/api/itens/:id/verificar", limiteSenha, async (req, res) => {
 
 app.put("/api/itens/:id", limiteSenha, async (req, res) => {
   const id = Number(req.params.id);
-  const { senha, titulo, descricao, local, tipo, categoria, contato, data_perdido_achado } = req.body ?? {};
-  const categoriaFinal = categoria || "outros";
+  const senha: unknown = req.body?.senha;
 
   if (!Number.isInteger(id) || typeof senha !== "string" || !senha) {
     res.status(400).json({ erro: "Informe a senha da postagem." });
     return;
   }
 
-  if (
-    !titulo || !local || !contato ||
-    !TIPOS.includes(tipo) || !CATEGORIAS.includes(categoriaFinal)
-  ) {
-    res.status(400).json({ erro: "Preencha os campos corretamente." });
+  const leitura = lerDados(req.body);
+
+  if (!leitura.ok) {
+    res.status(400).json({ erro: leitura.erro });
     return;
   }
+
+  const { dados } = leitura;
 
   try {
     const verificacao = await verificarSenha(id, senha);
@@ -245,13 +357,13 @@ app.put("/api/itens/:id", limiteSenha, async (req, res) => {
            contato = ?, data_perdido_achado = ?
        WHERE id_mural = ?`,
       [
-        titulo,
-        descricao || null,
-        local,
-        tipo,
-        categoriaFinal,
-        contato,
-        data_perdido_achado || null,
+        dados.titulo,
+        dados.descricao,
+        dados.local,
+        dados.tipo,
+        dados.categoria,
+        dados.contato,
+        dados.dataPerdidoAchado,
         id,
       ]
     );
@@ -265,7 +377,7 @@ app.put("/api/itens/:id", limiteSenha, async (req, res) => {
 
 app.patch("/api/itens/:id/resolvido", limiteSenha, async (req, res) => {
   const id = Number(req.params.id);
-  const senha = req.body?.senha;
+  const senha: unknown = req.body?.senha;
 
   if (!Number.isInteger(id) || typeof senha !== "string" || !senha) {
     res.status(400).json({ erro: "Informe a senha da postagem." });
@@ -291,7 +403,7 @@ app.patch("/api/itens/:id/resolvido", limiteSenha, async (req, res) => {
 
 app.delete("/api/itens/:id", limiteSenha, async (req, res) => {
   const id = Number(req.params.id);
-  const senha = req.body?.senha;
+  const senha: unknown = req.body?.senha;
 
   if (!Number.isInteger(id) || typeof senha !== "string" || !senha) {
     res.status(400).json({ erro: "Informe a senha da postagem." });
@@ -316,17 +428,41 @@ app.delete("/api/itens/:id", limiteSenha, async (req, res) => {
   }
 });
 
+/* ---------- Tratamento de erros ---------- */
+
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-  if (err instanceof multer.MulterError && err.code === "LIMIT_FILE_SIZE") {
-    res.status(400).json({ erro: "A imagem deve ter no máximo 5 MB." });
+  if (err instanceof multer.MulterError) {
+    const erro =
+      err.code === "LIMIT_FILE_SIZE"
+        ? "A imagem deve ter no máximo 5 MB."
+        : "Envio de arquivo inválido.";
+    res.status(400).json({ erro });
     return;
   }
 
-  res.status(400).json({ erro: err.message });
+  if (err instanceof ErroUsuario) {
+    res.status(400).json({ erro: err.message });
+    return;
+  }
+
+  const tipoErro = (err as { type?: string }).type;
+
+  if (tipoErro === "entity.too.large") {
+    res.status(413).json({ erro: "Requisição grande demais." });
+    return;
+  }
+
+  if (tipoErro === "entity.parse.failed") {
+    res.status(400).json({ erro: "Requisição inválida." });
+    return;
+  }
+
+  console.error(err);
+  res.status(500).json({ erro: "Erro interno do servidor." });
 });
 
-const PORT = 3000;
+const PORT = Number(process.env.PORT) || 3000;
 
 app.listen(PORT, () => {
-  console.log(`Servidor rodando em http://localhost:${PORT}`);
+  console.log(`Servidor rodando na porta ${PORT}`);
 });

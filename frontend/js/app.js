@@ -1,5 +1,3 @@
-const API = "http://localhost:3000";
-
 const EMOJIS = {
     documento: "📄",
     chaves: "🔑",
@@ -14,23 +12,47 @@ const form = document.getElementById("form-item");
 const modal = document.getElementById("modal");
 const modalTitulo = document.getElementById("modal-titulo");
 const btnNova = document.getElementById("btn-nova");
+const btnTema = document.getElementById("btn-tema");
+const btnTopo = document.getElementById("btn-topo");
 const aviso = document.getElementById("aviso");
+const avisoDocumento = document.getElementById("aviso-documento");
 const erroForm = document.getElementById("erro-form");
 const filtroTipo = document.getElementById("filtro-tipo");
 const filtroCategoria = document.getElementById("filtro-categoria");
 const btnEnviar = document.getElementById("btn-enviar");
 const btnCancelar = document.getElementById("btn-cancelar");
-const btnTema = document.getElementById("btn-tema");
-const btnTopo = document.getElementById("btn-topo");
 
 let editandoId = null;
 let senhaEdicao = null;
 
+/* ---------- Utilitários ---------- */
+
+// Datas chegam como texto ("2026-11-25 00:00:00"): formatar na mão evita
+// que o fuso horário mude o dia
+function formatarData(valor) {
+    if (!valor) return null;
+    const [ano, mes, dia] = valor.slice(0, 10).split("-");
+    return `${dia}/${mes}/${ano}`;
+}
+
+function mostrarNoMural(texto) {
+    mural.textContent = "";
+    const p = document.createElement("p");
+    p.classList.add("vazio");
+    p.textContent = texto;
+    mural.appendChild(p);
+}
+
 /* ---------- Modal ---------- */
+
+function atualizarAvisoDocumento() {
+    avisoDocumento.hidden = form.elements.categoria.value !== "documento";
+}
 
 function abrirModal(titulo) {
     modalTitulo.textContent = titulo;
     erroForm.textContent = "";
+    atualizarAvisoDocumento();
     modal.showModal();
 }
 
@@ -43,6 +65,7 @@ function mostrarAviso(texto) {
 
 btnNova.addEventListener("click", () => abrirModal("Nova postagem"));
 btnCancelar.addEventListener("click", () => modal.close());
+form.elements.categoria.addEventListener("change", atualizarAvisoDocumento);
 
 // Fecha ao clicar no fundo escuro (só se o clique começou e terminou nele,
 // para não fechar quando a pessoa seleciona texto e solta o mouse fora)
@@ -81,6 +104,7 @@ async function iniciarEdicao(item) {
         entrarModoEdicao(item, senha);
     } catch (error) {
         console.error("Erro ao verificar a senha:", error);
+        alert("Não foi possível verificar a senha. Tente novamente.");
     }
 }
 
@@ -186,6 +210,7 @@ async function apagarItem(id) {
         if (resposta.ok) carregarItens();
     } catch (error) {
         console.error("Erro ao apagar:", error);
+        alert("Não foi possível apagar. Tente novamente.");
     }
 }
 
@@ -206,6 +231,7 @@ async function marcarResolvido(id) {
         if (resposta.ok) carregarItens();
     } catch (error) {
         console.error("Erro ao atualizar:", error);
+        alert("Não foi possível atualizar. Tente novamente.");
     }
 }
 
@@ -238,6 +264,7 @@ function criarPost(item) {
         midia.classList.add("post-foto");
         midia.src = item.foto;
         midia.alt = item.titulo;
+        midia.loading = "lazy";
     } else {
         midia = document.createElement("div");
         midia.classList.add("post-sem-foto");
@@ -258,8 +285,9 @@ function criarPost(item) {
     local.textContent = `📍 ${item.local}`;
 
     const dataEl = document.createElement("p");
-    dataEl.textContent = item.data_perdido_achado
-        ? `📅 ${new Date(item.data_perdido_achado).toLocaleDateString("pt-BR")}`
+    const dataFormatada = formatarData(item.data_perdido_achado);
+    dataEl.textContent = dataFormatada
+        ? `📅 ${dataFormatada}`
         : "📅 Data não informada";
 
     const contato = document.createElement("p");
@@ -295,6 +323,11 @@ function criarPost(item) {
 }
 
 async function carregarItens() {
+    // Na primeira carga, avisa que pode demorar (servidor gratuito "dormindo")
+    if (!mural.hasChildNodes()) {
+        mostrarNoMural("Carregando o mural... a primeira visita pode demorar alguns segundos.");
+    }
+
     try {
         const params = new URLSearchParams();
         if (filtroTipo.value) params.append("tipo", filtroTipo.value);
@@ -309,10 +342,7 @@ async function carregarItens() {
         mural.textContent = "";
 
         if (itens.length === 0) {
-            const vazio = document.createElement("p");
-            vazio.classList.add("vazio");
-            vazio.textContent = "Nenhum item encontrado.";
-            mural.appendChild(vazio);
+            mostrarNoMural("Nenhum item encontrado.");
             return;
         }
 
@@ -321,6 +351,7 @@ async function carregarItens() {
         });
     } catch (error) {
         console.error("Erro ao carregar:", error);
+        mostrarNoMural("Não foi possível carregar o mural. Tente novamente em instantes.");
     }
 }
 
@@ -336,7 +367,10 @@ form.addEventListener("submit", async (e) => {
     }
 });
 
-// tema para claro e escuro
+filtroTipo.addEventListener("change", carregarItens);
+filtroCategoria.addEventListener("change", carregarItens);
+
+/* ---------- Tema claro/escuro ---------- */
 
 function aplicarTema(tema) {
     document.documentElement.dataset.theme = tema;
@@ -359,7 +393,7 @@ btnTema.addEventListener("click", () => {
 
 aplicarTema(document.documentElement.dataset.theme ?? "light");
 
-/* botao para voltar ao topo */
+/* ---------- Voltar ao topo ---------- */
 
 function atualizarBotaoTopo() {
     btnTopo.hidden = window.scrollY < 400;
@@ -373,8 +407,5 @@ btnTopo.addEventListener("click", () => {
 });
 
 atualizarBotaoTopo();
-
-filtroTipo.addEventListener("change", carregarItens);
-filtroCategoria.addEventListener("change", carregarItens);
 
 carregarItens();
