@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt-br">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,7 +9,7 @@
   <script>
     (function () {
       var tema = null;
-      try { tema = localStorage.getItem("tema"); } catch (e) {}
+      try { tema = localStorage.getItem("tema"); } catch (e) { }
       if (tema !== "dark" && tema !== "light") {
         tema = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
       }
@@ -17,6 +18,7 @@
   </script>
   <link rel="stylesheet" href="css/style.css">
 </head>
+
 <body>
   <header class="topo">
     <h1>Mural de Achados e Perdidos</h1>
@@ -67,7 +69,8 @@
         <label for="foto">Foto (opcional)</label>
         <input type="file" id="foto" name="foto" accept="image/jpeg,image/png,image/webp">
 
-        <input type="password" name="senha" placeholder="Senha para editar/apagar depois" minlength="6" maxlength="72" required>
+        <input type="password" name="senha" placeholder="Senha para editar/apagar depois" minlength="6" maxlength="72"
+          required>
         <small>Mínimo de 6 caracteres. Guarde essa senha: ela é a única forma de editar ou apagar sua postagem.</small>
 
         <div class="modal-botoes">
@@ -105,4 +108,5 @@
   <script src="js/config.js"></script>
   <script src="js/app.js"></script>
 </body>
+
 </html>
